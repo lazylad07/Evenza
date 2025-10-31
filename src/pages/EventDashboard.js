@@ -18,27 +18,29 @@ export default function EventDashboard() {
 
   // fetch events (public or owned — adjust if you have per-user logic)
   const fetchEvents = async () => {
-    const { data, error } = await supabase
-      .from("events")
-      .select("*, rsvps(id, name, status, guest_count, created_at)")
-      .order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("events")
+    .select("*, rsvps(id, name, status, guest_count, created_at)")
+    .eq("created_by", user?.email) // 👈 only fetch events by logged-in user
+    .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Fetch error:", error);
-      return;
-    }
+  if (error) {
+    console.error("Fetch error:", error);
+    return;
+  }
 
-    const mapped = (data || []).map((ev) => {
-      const rsvps = ev.rsvps || [];
-      const yes = rsvps.filter((r) => r.status?.toLowerCase() === "yes").length;
-      const maybe = rsvps.filter((r) => r.status?.toLowerCase() === "maybe").length;
-      const no = rsvps.filter((r) => r.status?.toLowerCase() === "no").length;
-      const totalGuests = rsvps.reduce((s, r) => s + (Number(r.guest_count) || 1), 0);
-      return { ...ev, _counts: { yes, maybe, no, totalGuests }, _rsvps: rsvps };
-    });
+  const mapped = (data || []).map((ev) => {
+    const rsvps = ev.rsvps || [];
+    const yes = rsvps.filter((r) => r.status === "yes").length;
+    const maybe = rsvps.filter((r) => r.status === "maybe").length;
+    const no = rsvps.filter((r) => r.status === "no").length;
+    const totalGuests = rsvps.reduce((s, r) => s + (r.guest_count || 1), 0);
+    return { ...ev, _counts: { yes, maybe, no, totalGuests } };
+  });
 
-    setEvents(mapped);
-  };
+  setEvents(mapped);
+};
+
 
   useEffect(() => {
     fetchEvents();
@@ -68,8 +70,14 @@ export default function EventDashboard() {
   const handleCreateEvent = async () => {
     if (!eventName || !eventDate) return alert("Please fill all fields");
     const { error } = await supabase.from("events").insert([
-      { name: eventName, date: new Date(eventDate).toISOString(), venue: eventVenue || null },
-    ]);
+  {
+    name: eventName,
+    date: new Date(eventDate).toISOString(),
+    venue: eventVenue || null,
+    created_by: user?.email, // 👈 store user identity
+  },
+]);
+
     if (error) {
       console.error("Insert error:", error);
       alert("Failed to create event.");
