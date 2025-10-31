@@ -1,31 +1,56 @@
-import { motion } from "framer-motion";
+// src/components/Navbar.js
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { LogOut } from "lucide-react";
-import { Link } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 
 export default function Navbar() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+    // clear local user (AuthContext should pick this up via onAuthStateChange too)
+    navigate("/login");
+  };
 
   return (
-    <motion.nav
-      className="fixed top-0 w-full bg-white/50 backdrop-blur-md flex justify-between items-center p-4 shadow-md z-50"
-      initial={{ y: -40, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-    >
-      <Link to="/" className="font-semibold text-lg">🌸 Evenza</Link>
-      {user ? (
-        <button
-          onClick={signOut}
-          className="flex items-center gap-2 bg-red-500 text-white px-3 py-1 rounded-xl hover:bg-red-600"
-        >
-          <LogOut size={16} /> Logout
-        </button>
-      ) : (
-        <div className="flex gap-3">
-          <Link to="/login" className="text-blue-600 hover:underline">Login</Link>
-          <Link to="/signup" className="text-blue-600 hover:underline">Signup</Link>
-        </div>
-      )}
-    </motion.nav>
+    <nav className="bg-white/80 backdrop-blur-md shadow-md p-4 flex justify-between items-center sticky top-0 z-50">
+      <Link to="/" className="text-2xl font-bold text-purple-600">
+        Evenza
+      </Link>
+
+      <div className="flex gap-4 items-center">
+        {!user ? (
+          <>
+            <Link to="/login" className="text-purple-600 hover:underline font-medium">
+              Login
+            </Link>
+            <Link
+              to="/signup"
+              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
+            >
+              Sign Up
+            </Link>
+          </>
+        ) : (
+          <>
+            <Link to="/dashboard" className="text-purple-600 hover:underline font-medium">
+              Dashboard
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
+            >
+              Logout
+            </button>
+          </>
+        )}
+      </div>
+    </nav>
   );
 }
