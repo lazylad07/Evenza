@@ -6,6 +6,7 @@ import EventDashboard from "./pages/EventDashboard";
 import RSVPPage from "./pages/RSVPPage";
 import ViewGuests from "./components/ViewGuests";
 import PrivateRoute from "./components/PrivateRoute";
+import PosterTrial from "./pages/PosterTrial";
 
 function App() {
   return (
@@ -21,7 +22,19 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route path="/rsvp/:eventId" element={<RSVPPage />} />
+          <Route
+  path="/postertrial"
+  element={
+    <PosterTrial
+      eventName="Gwalan’s Birthday Bash 🎉"
+      date="June 25, 2025"
+      tagline="A Night to Remember!"
+    />
+  }
+/>
+
+
+          <Route path="/rsvp/:slugOrId" element={<RSVPPage />} />
           <Route path="/view-guests/:eventId" element={<ViewGuests />} />
         </Routes>
       </Router>
