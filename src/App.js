@@ -6,13 +6,16 @@ import EventDashboard from "./pages/EventDashboard";
 import RSVPPage from "./pages/RSVPPage";
 import ViewGuests from "./components/ViewGuests";
 import PrivateRoute from "./components/PrivateRoute";
-import PosterTrial from "./pages/PosterTrial";
+import PosterGeneratorTrial from "./components/PosterGeneratorTrial";
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
+          {/* 🧠 Poster Generator Trial Route */}
+          <Route path="/poster-generator" element={<PosterGeneratorTrial />} />
+
           <Route path="/login" element={<AuthPage />} />
           <Route
             path="/"
@@ -22,18 +25,6 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route
-  path="/postertrial"
-  element={
-    <PosterTrial
-      eventName="Gwalan’s Birthday Bash 🎉"
-      date="June 25, 2025"
-      tagline="A Night to Remember!"
-    />
-  }
-/>
-
-
           <Route path="/rsvp/:slugOrId" element={<RSVPPage />} />
           <Route path="/view-guests/:eventId" element={<ViewGuests />} />
         </Routes>

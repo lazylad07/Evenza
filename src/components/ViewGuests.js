@@ -1,91 +1,231 @@
+// src/components/ViewGuests.js
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
+import dayjs from "dayjs";
+import Navbar from "./Navbar";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { QRCodeCanvas } from "qrcode.react";
+import { motion } from "framer-motion";
 
 export default function ViewGuests() {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const [guests, setGuests] = useState([]);
+
   const [event, setEvent] = useState(null);
+  const [rsvps, setRsvps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showQR, setShowQR] = useState(false);
+  const [activeTab, setActiveTab] = useState("guests");
+
+  const COLORS = ["#22c55e", "#facc15", "#ef4444"];
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: eventData } = await supabase
+      setLoading(true);
+
+      const { data: ev } = await supabase
         .from("events")
         .select("*")
         .eq("id", eventId)
-        .single();
-      setEvent(eventData);
+        .maybeSingle();
 
-      const { data: rsvpData } = await supabase
+      setEvent(ev || null);
+
+      const { data: list } = await supabase
         .from("rsvps")
         .select("*")
-        .eq("event_id", eventId);
-      setGuests(rsvpData || []);
+        .eq("event_id", eventId)
+        .order("created_at", { ascending: false });
+
+      setRsvps(list || []);
+      setLoading(false);
     };
+
     fetchData();
   }, [eventId]);
 
-  const sortedGuests = [...guests].sort((a, b) => a.name.localeCompare(b.name));
+  if (loading)
+    return <div className="min-h-screen grid place-items-center">Loading...</div>;
+
+  if (!event)
+    return <div className="min-h-screen grid place-items-center">Event not found</div>;
+
+  const counts = {
+    yes: rsvps.filter((r) => r.status === "yes").length,
+    maybe: rsvps.filter((r) => r.status === "maybe").length,
+    no: rsvps.filter((r) => r.status === "no").length,
+  };
+
+  const pieData = [
+    { name: "Yes", value: counts.yes },
+    { name: "Maybe", value: counts.maybe },
+    { name: "No", value: counts.no },
+  ];
+
+  const totalGuests = rsvps.reduce(
+    (sum, r) => sum + (r.guest_count || 1),
+    0
+  );
+
+  const baseUrl =
+    process.env.REACT_APP_PUBLIC_BASE_URL || window.location.origin;
+
+  const rsvpLink = `${baseUrl}/rsvp/${event.slug || event.id}`;
+
+  const shareWhatsApp = () => {
+    const msg = `You're invited to *${event.name}* 🎉\n\n📅 ${dayjs(
+      event.date
+    ).format("ddd, MMM D, YYYY h:mm A")}\n📍 ${
+      event.venue || ""
+    }\n\nRSVP here:\n${rsvpLink}`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(rsvpLink);
+    alert("Link copied!");
+  };
+
+  const deleteEvent = async () => {
+    const confirmDelete = window.confirm("Delete this event?");
+    if (!confirmDelete) return;
+
+    await supabase.from("events").delete().eq("id", event.id);
+    navigate("/");
+  };
+
+  const exportCSV = () => {
+    const header = ["name", "status", "guest_count", "note"];
+    const rows = rsvps.map((r) => [
+      r.name || "",
+      r.status || "",
+      r.guest_count || 1,
+      (r.note || "").replace(/\n/g, " "),
+    ]);
+
+    const csv = [header, ...rows]
+      .map((r) => r.map((c) => `"${c}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${event.name}-guests.csv`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-pink-100 to-purple-100 flex flex-col items-center py-8 px-3 sm:px-6">
-      <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-xl w-full max-w-5xl p-6 sm:p-10">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl sm:text-4xl font-bold text-purple-700">
-            🎊 {event ? event.name : "Event"} — Guests
-          </h1>
-          <button
-            onClick={() => navigate("/")}
-            className="bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 transition"
-          >
-            ← Back
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
+      <Navbar />
+
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-purple-700">
+              {event.name}
+            </h2>
+            <p>{dayjs(event.date).format("ddd, MMM D, YYYY h:mm A")}</p>
+            <p>📍 {event.venue}</p>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => navigate("/")} className="btn">Back</button>
+            <button onClick={shareWhatsApp} className="btn bg-green-500 text-white">WhatsApp</button>
+            <button onClick={copyLink} className="btn">Copy Link</button>
+            <button onClick={() => navigate(`/edit/${event.id}`)} className="btn">Edit</button>
+            <button onClick={deleteEvent} className="btn bg-red-500 text-white">Delete</button>
+            <button onClick={exportCSV} className="btn">Export CSV</button>
+            <button onClick={() => setShowQR(!showQR)} className="btn">
+              {showQR ? "Hide QR" : "Show QR"}
+            </button>
+          </div>
         </div>
 
-        <p className="text-center text-gray-600 mb-6 sm:mb-8">
-          📍 {event?.venue || "Venue TBD"}
-        </p>
+        {/* TABS */}
+        <div className="flex gap-3 border-b pb-2">
+          {["guests", "feedback", "analytics"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 rounded-full ${
+                activeTab === tab
+                  ? "bg-purple-600 text-white"
+                  : "bg-gray-200"
+              }`}
+            >
+              {tab.toUpperCase()}
+            </button>
+          ))}
+        </div>
 
-        {sortedGuests.length === 0 ? (
-          <p className="text-center text-gray-500">No guests have RSVP'd yet.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border border-purple-200">
-            <table className="w-full text-sm sm:text-base text-gray-700">
-              <thead>
-                <tr className="bg-purple-100 text-purple-800 text-left">
-                  <th className="p-3 sm:p-4 rounded-l-lg">Name</th>
-                  <th className="p-3 sm:p-4">Status</th>
-                  <th className="p-3 sm:p-4">Guests</th>
-                  <th className="p-3 sm:p-4 rounded-r-lg">Responded</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedGuests.map((g) => (
-                  <tr
-                    key={g.id}
-                    className="bg-white even:bg-purple-50 hover:bg-purple-100 transition"
-                  >
-                    <td className="p-3 sm:p-4 font-medium">{g.name}</td>
-                    <td
-                      className={`p-3 sm:p-4 font-semibold ${
-                        g.status === "yes"
-                          ? "text-green-600"
-                          : g.status === "maybe"
-                          ? "text-yellow-600"
-                          : "text-red-600"
-                      }`}
-                    >
-                      {g.status}
-                    </td>
-                    <td className="p-3 sm:p-4">{g.guest_count || 1}</td>
-                    <td className="p-3 sm:p-4 text-gray-500 text-sm">
-                      {new Date(g.created_at).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* CONTENT */}
+
+        {/* 👥 GUESTS */}
+        {activeTab === "guests" && (
+          <div className="space-y-4">
+            {rsvps.map((g) => (
+              <motion.div
+                key={g.id}
+                className="bg-white p-4 rounded-xl shadow flex justify-between"
+              >
+                <div>
+                  <p className="font-semibold">{g.name}</p>
+                  <p className="text-sm text-gray-600">
+                    {g.status} • Guests: {g.guest_count || 1}
+                  </p>
+                </div>
+
+                {showQR && (
+                  <QRCodeCanvas
+                    value={`${rsvpLink}?guest=${g.id}`}
+                    size={60}
+                  />
+                )}
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* 💌 FEEDBACK */}
+        {activeTab === "feedback" && (
+          <div className="space-y-4">
+            {rsvps.filter((g) => g.note).map((g) => (
+              <div className="bg-white p-4 rounded-xl shadow">
+                <p className="font-semibold text-purple-600">{g.name}</p>
+                <p className="italic mt-2">“{g.note}”</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 📊 ANALYTICS */}
+        {activeTab === "analytics" && (
+          <div className="bg-white p-6 rounded-xl shadow">
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie data={pieData} dataKey="value" outerRadius={80}>
+                  {pieData.map((entry, idx) => (
+                    <Cell key={idx} fill={COLORS[idx]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+
+            <div className="mt-4 text-sm space-y-1">
+              <div>✅ Yes: {counts.yes}</div>
+              <div>🤔 Maybe: {counts.maybe}</div>
+              <div>❌ No: {counts.no}</div>
+              <div className="font-semibold">👥 Total: {totalGuests}</div>
+            </div>
           </div>
         )}
       </div>
