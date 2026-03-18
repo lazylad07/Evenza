@@ -159,7 +159,7 @@ export default function EventDashboard() {
     setEditingEvent(null);
   };
 
-  const generateSlug = (name) => {
+
     return name
       .toLowerCase()
       .replace(/[^a-z0-9 ]/g, "") // remove special chars
@@ -428,4 +428,4 @@ export default function EventDashboard() {
       </div>
     </div>
   );
-}
+
