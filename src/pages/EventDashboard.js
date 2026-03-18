@@ -160,13 +160,13 @@ export default function EventDashboard() {
   };
 
   const generateSlug = (name) => {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, "") // remove special chars
-    .replace(/\s+/g, "-");      // replace spaces with -
-};
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]/g, "") // remove special chars
+      .replace(/\s+/g, "-");      // replace spaces with -
+  };
 
-const shareWhatsApp = (ev) => {
+  const shareWhatsApp = (ev) => {
   const baseUrl = process.env.REACT_APP_PUBLIC_BASE_URL || window.location.origin;
   const link = `${baseUrl}/rsvp/${ev.slug || ev.id}`;
 
@@ -188,7 +188,6 @@ const shareWhatsApp = (ev) => {
     const link = `${baseUrl}/rsvp/${ev.slug || ev.id}`;
     try { await navigator.clipboard.writeText(link); alert("Link copied!"); } catch { alert("Copy failed"); }
   }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
       <Navbar logout={logout} email={user?.email} />
@@ -430,4 +429,3 @@ const shareWhatsApp = (ev) => {
     </div>
   );
 }
-
