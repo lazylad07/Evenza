@@ -159,16 +159,9 @@ export default function EventDashboard() {
     setEditingEvent(null);
   };
 
-
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9 ]/g, "") // remove special chars
-      .replace(/\s+/g, "-");      // replace spaces with -
-  };
-
   const shareWhatsApp = (ev) => {
-  const baseUrl = process.env.REACT_APP_PUBLIC_BASE_URL || window.location.origin;
-  const link = `${baseUrl}/rsvp/${ev.slug || ev.id}`;
+    const baseUrl = process.env.REACT_APP_PUBLIC_BASE_URL || window.location.origin;
+    const link = `${baseUrl}/rsvp/${ev.slug || ev.id}`;
 
   const textLines = [
     `You're invited to: ${ev.name}`,
@@ -428,4 +421,6 @@ export default function EventDashboard() {
       </div>
     </div>
   );
+}
+
 
